@@ -58,4 +58,6 @@ public:
     //point doubling
     ECPoint pointDouble(const ECPoint& P, const ZZ_p& a);
 
+    //scalar multiplication
+    ECPoint scalarMultiply(const ECPoint& P, const ZZ& k, const ZZ_p& a);
 };

@@ -301,3 +301,21 @@ bool appliedCryptography::elGamalVerify(const ZZ& p, const ZZ& g, const ZZ& h, c
 
     return ECPoint(x3, y3);
 }
+
+
+
+// scalar multiplication
+
+ECPoint appliedCryptography::scalarMultiply(const ECPoint& P, const ZZ& k, const ZZ_p& a) {
+    ECPoint R;  // Point at infinity 
+    ECPoint Q = P;
+    long n = NumBits(k);  // Number of bits in k
+
+    for (long i = n - 1; i >= 0; i--) {
+        R = pointDouble(R, a);      // Double the point each iteration
+        if (bit(k, i))              // If the i-th bit of k == 1
+            R = pointAdd(R, Q, a);  // then Add base point P
+    }
+
+    return R;  // Result = k * P
+}

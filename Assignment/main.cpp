@@ -18,7 +18,7 @@ int main() {
     cout << "Plaintext: " << shiftPlain << endl;
     cout << "Encrypted : " << shiftEnc << endl;
     cout << "Decrypted : " << shiftDec << endl << endl;
-
+ 
     // Vigenere Cipher Example
     string vigPlain = "HELLO";
     string vigKey = "KEY";
@@ -150,7 +150,7 @@ int main() {
 
 
     
-    // Eleptic curve
+   /* // Eleptic curve
     //point addition
     ZZ_p::init(ZZ(11)); // Modulus p = 11
     ZZ_p a = conv<ZZ_p>(1); // Curve coefficient 'a'
@@ -176,6 +176,30 @@ int main() {
     ECPoint pd_R = crypto.pointDouble(pd_P, pd_a);
 
     cout << "2P = (" << rep(pd_R.x) << ", " << rep(pd_R.y) << ")" << endl;
+*/
+ 
 
-    return 0;
+
+    ZZ_p::init(ZZ(11)); // Modulus p = 11
+    ZZ_p a = conv<ZZ_p>(1); // Curve coefficient 'a'
+    ZZ_p b = conv<ZZ_p>(6); // Curve coefficient 'b'
+
+    ECPoint P(conv<ZZ_p>(2), conv<ZZ_p>(7));
+    ECPoint Q(conv<ZZ_p>(5), conv<ZZ_p>(2));
+
+    // Point Addition
+    ECPoint R1 = crypto.pointAdd(P, Q, a);
+    cout << "P + Q = (" << rep(R1.x) << ", " << rep(R1.y) << ")" << endl;
+
+    // Point Doubling
+    ECPoint R2 = crypto.pointDouble(P, a);
+    cout << "2P = (" << rep(R2.x) << ", " << rep(R2.y) << ")" << endl;
+
+    // Scalar Multiplication (example: 3 * P)
+    ZZ k = conv<ZZ>(5);
+    ECPoint R3 = crypto.scalarMultiply(P, k, a);    
+    cout << "7P = (" << rep(R3.x) << ", " << rep(R3.y) << ")" << endl;
+
+
+   return 0;
 }
