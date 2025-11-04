@@ -180,25 +180,51 @@ int main() {
  
 
 
-    ZZ_p::init(ZZ(11)); // Modulus p = 11
-    ZZ_p a = conv<ZZ_p>(1); // Curve coefficient 'a'
-    ZZ_p b = conv<ZZ_p>(6); // Curve coefficient 'b'
-
-    ECPoint P(conv<ZZ_p>(2), conv<ZZ_p>(7));
+    ZZ_p::init(ZZ(11));
+    ZZ_p a = conv<ZZ_p>(1);
+    ZZ_p b = conv<ZZ_p>(6);
+    ECPoint P(conv<ZZ_p>(7), conv<ZZ_p>(9));
     ECPoint Q(conv<ZZ_p>(5), conv<ZZ_p>(2));
 
-    // Point Addition
+    // point addition
     ECPoint R1 = crypto.pointAdd(P, Q, a);
-    cout << "P + Q = (" << rep(R1.x) << ", " << rep(R1.y) << ")" << endl;
+    cout << "P + Q = (" << rep(R1.x) << ", " << rep(R1.y) << ")\n";
 
-    // Point Doubling
+    // point doubling
     ECPoint R2 = crypto.pointDouble(P, a);
-    cout << "2P = (" << rep(R2.x) << ", " << rep(R2.y) << ")" << endl;
+    cout << "2P = (" << rep(R2.x) << ", " << rep(R2.y) << ")\n";
 
-    // Scalar Multiplication (example: 3 * P)
-    ZZ k = conv<ZZ>(5);
-    ECPoint R3 = crypto.scalarMultiply(P, k, a);    
-    cout << "7P = (" << rep(R3.x) << ", " << rep(R3.y) << ")" << endl;
+    // scalar multiplication
+    ZZ k = conv<ZZ>(7);
+    ECPoint R3 = crypto.scalarMultiply(P, k, a);
+    cout << "7P = (" << rep(R3.x) << ", " << rep(R3.y) << ")\n";
+
+    
+    
+    
+    
+    
+    // ElGamal ECC Encryption/Decryption 
+    ECPoint Gp(conv<ZZ_p>(7), conv<ZZ_p>(9));
+    ECPoint Msg(conv<ZZ_p>(5), conv<ZZ_p>(2));
+    ZZ q = conv<ZZ>(13);
+
+
+    ZZ privECC; ECPoint Pub;
+    crypto.keyGen(Gp, q, privECC, Pub);
+    cout << "ECC private: " << privECC << "\nECC public: (" << rep(Pub.x) << "," << rep(Pub.y) << ")\n";
+
+    
+    auto eccCipher = crypto.elgamalEncryptEC(Msg, Gp, Pub, q);
+    ECPoint C1 = eccCipher.first;
+    ECPoint C2 = eccCipher.second;
+    cout << "EC Cipher C1=(" << rep(C1.x) << "," << rep(C1.y) << ") C2=(" << rep(C2.x) << "," << rep(C2.y) << ")\n";
+
+    ECPoint decEC = crypto.elgamalDecryptEC(eccCipher, privECC);
+    if (decEC.isInfinity)
+        cout << "Decrypted is infinity\n";
+    else
+        cout << "Decrypted EC Msg = (" << rep(decEC.x) << "," << rep(decEC.y) << ")\n";
 
 
    return 0;

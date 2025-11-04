@@ -14,6 +14,12 @@ struct ECPoint {
 
 
 class appliedCryptography {
+
+private:
+    ZZ pECC;      // Field modulus
+    ZZ_p aECC;    // Curve coefficient a
+    ZZ_p bECC;    // Curve coefficient b
+
 public:
     // Shift Cipher
     string shiftEncrypt(string text, int key);
@@ -52,12 +58,15 @@ public:
     void elGamalSign(const ZZ& p, const ZZ& g, const ZZ& x, const ZZ& m, ZZ& gamma, ZZ& delta);
     bool elGamalVerify(const ZZ& p, const ZZ& g, const ZZ& h, const ZZ& m, const ZZ& gamma, const ZZ& delta);
 
-    // point addition
-    ECPoint pointAdd(const ECPoint& P, const ECPoint& Q, const ZZ_p& a);
-    
-    //point doubling
-    ECPoint pointDouble(const ECPoint& P, const ZZ_p& a);
 
-    //scalar multiplication
+    void initCurve(const ZZ& _pECC, const ZZ_p& _aECC, const ZZ_p& _bECC);
+    ECPoint pointAdd(const ECPoint& P, const ECPoint& Q, const ZZ_p& a);
+    ECPoint pointDouble(const ECPoint& P, const ZZ_p& a);
+    ECPoint pointNeg(const ECPoint& P);
     ECPoint scalarMultiply(const ECPoint& P, const ZZ& k, const ZZ_p& a);
+
+    void keyGen(const ECPoint& G, const ZZ& q, ZZ& priv, ECPoint& Q);
+    pair<ECPoint, ECPoint> elgamalEncryptEC(const ECPoint& M, const ECPoint& G, const ECPoint& Q, const ZZ& q);
+    ECPoint elgamalDecryptEC(const pair<ECPoint, ECPoint>& C, const ZZ& priv);
+
 };

@@ -298,7 +298,6 @@ bool appliedCryptography::elGamalVerify(const ZZ& p, const ZZ& g, const ZZ& h, c
 
     // y3 = λ(x1 - x3) - y1
     ZZ_p y3 = lambda * (P.x - x3) - P.y;
-
     return ECPoint(x3, y3);
 }
 
@@ -318,4 +317,49 @@ ECPoint appliedCryptography::scalarMultiply(const ECPoint& P, const ZZ& k, const
     }
 
     return R;  // Result = k * P
+}
+
+
+
+
+
+
+
+
+void appliedCryptography::initCurve(const ZZ& _pECC, const ZZ_p& _aECC, const ZZ_p& _bECC) {
+    pECC = _pECC;
+    ZZ_p::init(pECC);
+    aECC = _aECC;
+    bECC = _bECC;
+}
+
+ECPoint appliedCryptography::pointNeg(const ECPoint& P) {
+    if (P.isInfinity) return P;
+    return ECPoint(P.x, -P.y);
+}
+
+
+void appliedCryptography::keyGen(const ECPoint& G, const ZZ& q, ZZ& priv, ECPoint& Q) {
+    priv = RandomBnd(q);
+    Q = scalarMultiply(G, priv, aECC);
+}
+
+pair<ECPoint, ECPoint> appliedCryptography::elgamalEncryptEC(const ECPoint& M, const ECPoint& G, const ECPoint& Q, const ZZ& q) {
+     
+    ZZ y ;
+    do {
+         y = RandomBnd(q);
+    } while (y == 0);  // ensures 1 <= y < q
+    ECPoint C1 = scalarMultiply(G, y, aECC);
+    ECPoint yQ = scalarMultiply(Q, y, aECC);
+    ECPoint C2 = pointAdd(M, yQ, aECC);
+
+    return make_pair(C1, C2);
+}
+
+ECPoint appliedCryptography::elgamalDecryptEC(const pair<ECPoint, ECPoint>& C, const ZZ& priv) {
+    ECPoint mC1 = scalarMultiply(C.first, priv, aECC);
+    ECPoint neg = pointNeg(mC1);
+    ECPoint M = pointAdd(C.second, neg, aECC);
+    return M;
 }
