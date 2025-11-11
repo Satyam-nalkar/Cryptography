@@ -259,107 +259,146 @@ bool appliedCryptography::elGamalVerify(const ZZ& p, const ZZ& g, const ZZ& h, c
 
 
 
-    // point addition
-    ECPoint appliedCryptography::pointAdd(const ECPoint& P, const ECPoint& Q, const ZZ_p& a) {
-    
-    if (P.isInfinity) 
-        return Q;
-    if (Q.isInfinity)  
-        return P;
-    if (P.x == Q.x && P.y != Q.y) 
-        return ECPoint(); // Point at infinity
-
-    // λ = (y2 - y1) * (x2 - x1)^(-1)
-    ZZ_p lambda = (Q.y - P.y) * inv(Q.x - P.x);
-
-    // x3 = λ^2 - x1 - x2
-    ZZ_p x3 = lambda * lambda - P.x - Q.x;
-
-    // y3 = λ(x1 - x3) - y1
-    ZZ_p y3 = lambda * (P.x - x3) - P.y;
-
-    return ECPoint(x3, y3);
-
-    }
-
-
-    //point doubling
-    ECPoint appliedCryptography::pointDouble(const ECPoint& P, const ZZ_p& a) {
-    if (P.isInfinity)
-        return P;
-
-    // y = 0 -> vertical tangent -> result infinity
-    if (P.y == 0) return ECPoint();
-
-    ZZ_p lambda = ( (3 * P.x * P.x) + a ) * inv(2 * P.y);
-
-    // x3 = λ^2 - 2x1
-    ZZ_p x3 = lambda * lambda - 2 * P.x;
-
-    // y3 = λ(x1 - x3) - y1
-    ZZ_p y3 = lambda * (P.x - x3) - P.y;
-    return ECPoint(x3, y3);
-}
-
-
-
-// scalar multiplication
-
-ECPoint appliedCryptography::scalarMultiply(const ECPoint& P, const ZZ& k, const ZZ_p& a) {
-    ECPoint R;  // Point at infinity 
-    ECPoint Q = P;
-    long n = NumBits(k);  // Number of bits in k
-
-    for (long i = n - 1; i >= 0; i--) {
-        R = pointDouble(R, a);      // Double the point each iteration
-        if (bit(k, i))              // If the i-th bit of k == 1
-            R = pointAdd(R, Q, a);  // then Add base point P
-    }
-
-    return R;  // Result = k * P
-}
-
-
-
-
-
-
-
-
+    // Elliptic curve 
 void appliedCryptography::initCurve(const ZZ& _pECC, const ZZ_p& _aECC, const ZZ_p& _bECC) {
     pECC = _pECC;
-    ZZ_p::init(pECC);
+    ZZ_p::init(pECC);    // set modulus
     aECC = _aECC;
     bECC = _bECC;
 }
 
+// Point negation: returns -P
 ECPoint appliedCryptography::pointNeg(const ECPoint& P) {
     if (P.isInfinity) return P;
-    return ECPoint(P.x, -P.y);
+    return ECPoint(P.x, -P.y);    // -y (NTL handles mod p)
 }
 
+// Point addition (uses class aECC implicitly in doubling if needed)
+ECPoint appliedCryptography::pointAdd(const ECPoint& P, const ECPoint& Q) {
+    if (P.isInfinity) return Q;
+    if (Q.isInfinity) return P;
 
+    // P + (-P) => infinity
+    if (P.x == Q.x && P.y != Q.y) return ECPoint();
+
+    // If P == Q, call doubling
+    if (P.x == Q.x && P.y == Q.y) return pointDouble(P);
+
+    // slope lambda = (y2 - y1) * (x2 - x1)^(-1)
+    ZZ_p num = Q.y - P.y;
+    ZZ_p den = Q.x - P.x;
+    ZZ_p lambda = num * inv(den);  // inv from NTL
+
+    ZZ_p x3 = lambda * lambda - P.x - Q.x;
+    ZZ_p y3 = lambda * (P.x - x3) - P.y;
+
+    return ECPoint(x3, y3);
+}
+
+// Point doubling
+ECPoint appliedCryptography::pointDouble(const ECPoint& P) {
+    if (P.isInfinity) return P;
+
+    // If y == 0 => slope infinite, result = point at infinity
+    if (rep(P.y) == 0) return ECPoint();
+
+    ZZ_p num = ZZ_p(3) * P.x * P.x + aECC;   // 3*x^2 + a
+    ZZ_p den = ZZ_p(2) * P.y;                // 2*y
+    ZZ_p lambda = num * inv(den);
+
+    ZZ_p x3 = lambda * lambda - ZZ_p(2) * P.x;
+    ZZ_p y3 = lambda * (P.x - x3) - P.y;
+
+    return ECPoint(x3, y3);
+}
+
+// Scalar multiplication (double-and-add, MSB-first)
+ECPoint appliedCryptography::scalarMultiply(const ECPoint& P, const ZZ& k) {
+    if (P.isInfinity) return P;
+    if (k == 0) return ECPoint();
+
+    ECPoint R;         // starts as point at infinity
+    // Q not needed to change; we add P when bit==1
+    long n = NumBits(k);
+    for (long i = n - 1; i >= 0; --i) {
+        // double R every iteration
+        R = pointDouble(R);
+        if (bit(k, i)) {
+            R = pointAdd(R, P);
+        }
+    }
+    return R;
+}
+
+// Key generation: choose priv in [1, q-1], compute Q = priv * G
 void appliedCryptography::keyGen(const ECPoint& G, const ZZ& q, ZZ& priv, ECPoint& Q) {
-    priv = RandomBnd(q);
-    Q = scalarMultiply(G, priv, aECC);
+    do {
+        priv = RandomBnd(q);   // 0..q-1
+    } while (priv == 0);
+    Q = scalarMultiply(G, priv);
 }
 
+// EC-ElGamal: C1 = yG, C2 = M + yQ
 pair<ECPoint, ECPoint> appliedCryptography::elgamalEncryptEC(const ECPoint& M, const ECPoint& G, const ECPoint& Q, const ZZ& q) {
-     
-    ZZ y ;
+    ZZ y;
     do {
-         y = RandomBnd(q);
-    } while (y == 0);  // ensures 1 <= y < q
-    ECPoint C1 = scalarMultiply(G, y, aECC);
-    ECPoint yQ = scalarMultiply(Q, y, aECC);
-    ECPoint C2 = pointAdd(M, yQ, aECC);
+        y = RandomBnd(q);
+    } while (y == 0);
 
+    ECPoint C1 = scalarMultiply(G, y);
+    ECPoint yQ = scalarMultiply(Q, y);
+    ECPoint C2 = pointAdd(M, yQ);
     return make_pair(C1, C2);
 }
 
+// EC-ElGamal decrypt: M = C2 - priv*C1
 ECPoint appliedCryptography::elgamalDecryptEC(const pair<ECPoint, ECPoint>& C, const ZZ& priv) {
-    ECPoint mC1 = scalarMultiply(C.first, priv, aECC);
+    ECPoint mC1 = scalarMultiply(C.first, priv);  // priv * C1
     ECPoint neg = pointNeg(mC1);
-    ECPoint M = pointAdd(C.second, neg, aECC);
+    ECPoint M = pointAdd(C.second, neg);
     return M;
 }
+
+
+
+
+// ECDSA=(r,s) using y random in [1,q-1]
+pair<ZZ, ZZ> appliedCryptography::signECDSA(const ZZ& msg, const ZZ& priv, const ECPoint& G, const ZZ& q) {
+    ZZ r, s, y;
+    do {
+        do {
+            y = RandomBnd(q);
+        } while (y == 0);
+
+        ECPoint yP = scalarMultiply(G, y);
+        if (yP.isInfinity) continue;
+
+        r = rep(yP.x) % q;
+        if (r == 0) continue;
+
+        ZZ yinv = InvMod(y, q);             // modular inverse
+        s = (yinv * (msg + priv * r)) % q;
+    } while (s == 0);
+
+    return make_pair(r, s);
+}
+
+// Verify signature
+bool appliedCryptography::verifyECDSA(const ZZ& msg, const pair<ZZ, ZZ>& sig, const ECPoint& G, const ECPoint& Q, const ZZ& q) {
+    ZZ r = sig.first, s = sig.second;
+    if (r <= 0 || r >= q || s <= 0 || s >= q) return false;
+
+    ZZ w = InvMod(s, q);
+    ZZ i = (msg * w) % q;
+    ZZ j = (r * w) % q;
+
+    ECPoint iP = scalarMultiply(G, i);
+    ECPoint jQ = scalarMultiply(Q, j);
+    ECPoint R = pointAdd(iP, jQ);
+
+    if (R.isInfinity) return false;
+    ZZ x0 = rep(R.x) % q;
+    return (x0 == r);
+}
+
+ 

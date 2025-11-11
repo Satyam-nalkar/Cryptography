@@ -60,13 +60,17 @@ public:
 
 
     void initCurve(const ZZ& _pECC, const ZZ_p& _aECC, const ZZ_p& _bECC);
-    ECPoint pointAdd(const ECPoint& P, const ECPoint& Q, const ZZ_p& a);
-    ECPoint pointDouble(const ECPoint& P, const ZZ_p& a);
+    ECPoint pointAdd(const ECPoint& P, const ECPoint& Q);
+    ECPoint pointDouble(const ECPoint& P);
     ECPoint pointNeg(const ECPoint& P);
-    ECPoint scalarMultiply(const ECPoint& P, const ZZ& k, const ZZ_p& a);
+    ECPoint scalarMultiply(const ECPoint& P, const ZZ& k);
 
     void keyGen(const ECPoint& G, const ZZ& q, ZZ& priv, ECPoint& Q);
     pair<ECPoint, ECPoint> elgamalEncryptEC(const ECPoint& M, const ECPoint& G, const ECPoint& Q, const ZZ& q);
     ECPoint elgamalDecryptEC(const pair<ECPoint, ECPoint>& C, const ZZ& priv);
+
+
+    pair<ZZ,ZZ> signECDSA(const ZZ& msg, const ZZ& priv, const ECPoint& G, const ZZ& q);
+    bool verifyECDSA(const ZZ& msg, const pair<ZZ,ZZ>& sig, const ECPoint& G, const ECPoint& Q, const ZZ& q);
 
 };

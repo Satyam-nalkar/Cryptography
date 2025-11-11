@@ -179,52 +179,76 @@ int main() {
 */
  
 
-
-    ZZ_p::init(ZZ(11));
+    ZZ p3 = conv<ZZ>(11);
+    ZZ_p::init(p3);
     ZZ_p a = conv<ZZ_p>(1);
     ZZ_p b = conv<ZZ_p>(6);
-    ECPoint P(conv<ZZ_p>(7), conv<ZZ_p>(9));
-    ECPoint Q(conv<ZZ_p>(5), conv<ZZ_p>(2));
+    crypto.initCurve(p3, a, b);
 
-    // point addition
-    ECPoint R1 = crypto.pointAdd(P, Q, a);
+    // Sample points on curve
+    ECPoint P(conv<ZZ_p>(5), conv<ZZ_p>(2));
+    ECPoint Q(conv<ZZ_p>(2), conv<ZZ_p>(7));
+
+    cout << "=== Elliptic Curve Operations ===\n";
+    // Point addition
+    ECPoint R1 = crypto.pointAdd(P, Q);
     cout << "P + Q = (" << rep(R1.x) << ", " << rep(R1.y) << ")\n";
 
-    // point doubling
-    ECPoint R2 = crypto.pointDouble(P, a);
+    // Point doubling
+    ECPoint R2 = crypto.pointDouble(P);
     cout << "2P = (" << rep(R2.x) << ", " << rep(R2.y) << ")\n";
 
-    // scalar multiplication
+    // Scalar multiplication
     ZZ k = conv<ZZ>(7);
-    ECPoint R3 = crypto.scalarMultiply(P, k, a);
+    ECPoint R3 = crypto.scalarMultiply(P, k);
     cout << "7P = (" << rep(R3.x) << ", " << rep(R3.y) << ")\n";
 
-    
-    
-    
-    
-    
-    // ElGamal ECC Encryption/Decryption 
-    ECPoint Gp(conv<ZZ_p>(7), conv<ZZ_p>(9));
+
+
+    // ElGamal ECC Encryption/Decryption
+    cout << "\nElGamal ECC Encryption/Decryption \n";
+    // Base point
+    ECPoint Gp(conv<ZZ_p>(2), conv<ZZ_p>(7));
     ECPoint Msg(conv<ZZ_p>(5), conv<ZZ_p>(2));
-    ZZ q = conv<ZZ>(13);
+    ZZ q = conv<ZZ>(13); // small example order
 
-
-    ZZ privECC; ECPoint Pub;
+    // Key generation
+    ZZ privECC; 
+    ECPoint Pub;
     crypto.keyGen(Gp, q, privECC, Pub);
-    cout << "ECC private: " << privECC << "\nECC public: (" << rep(Pub.x) << "," << rep(Pub.y) << ")\n";
+    cout << "Private Key: " << privECC << "\n";
+    cout << "Public Key: (" << rep(Pub.x) << "," << rep(Pub.y) << ")\n";
 
-    
+    // Encryption
     auto eccCipher = crypto.elgamalEncryptEC(Msg, Gp, Pub, q);
     ECPoint C1 = eccCipher.first;
     ECPoint C2 = eccCipher.second;
-    cout << "EC Cipher C1=(" << rep(C1.x) << "," << rep(C1.y) << ") C2=(" << rep(C2.x) << "," << rep(C2.y) << ")\n";
+    cout << "Ciphertext C1=(" << rep(C1.x) << "," << rep(C1.y)
+         << "), C2=(" << rep(C2.x) << "," << rep(C2.y) << ")\n";
 
+    // Decryption
     ECPoint decEC = crypto.elgamalDecryptEC(eccCipher, privECC);
-    if (decEC.isInfinity)
-        cout << "Decrypted is infinity\n";
+    cout << "Decrypted Message: (" << rep(decEC.x) << "," << rep(decEC.y) << ")\n";
+
+
+
+
+    //ECDSA Digital Signature
+    cout << "\n ECDSA Digital Signature \n";
+
+    // Message to sign (integer version)
+    ZZ msg = conv<ZZ>(4);
+
+    // Signature generation
+    pair<ZZ, ZZ> signature = crypto.signECDSA(msg, privECC, Gp, q);
+    cout << "Signature (r, s): (" << signature.first << ", " << signature.second << ")\n";
+
+    // Signature verification
+    bool verified = crypto.verifyECDSA(msg, signature, Gp, Pub, q);
+    if (verified)
+        cout << "Signature Verified Successfully!\n";
     else
-        cout << "Decrypted EC Msg = (" << rep(decEC.x) << "," << rep(decEC.y) << ")\n";
+        cout << "Signature Verification Failed!\n";
 
 
    return 0;
